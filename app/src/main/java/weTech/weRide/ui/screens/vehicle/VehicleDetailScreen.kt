@@ -106,7 +106,7 @@ fun VehicleDetailScreen(
                         onNextImage = { viewModel.nextImage() },
                         onReserveClick = {
                             navController.navigate(
-                                Screen.Reservation.createRoute(vehicle!!.id.toLongOrNull() ?: 0L)
+                                Screen.Reservation.createRoute(vehicle!!.id)
                             )
                         },
                         onScheduleClick = {

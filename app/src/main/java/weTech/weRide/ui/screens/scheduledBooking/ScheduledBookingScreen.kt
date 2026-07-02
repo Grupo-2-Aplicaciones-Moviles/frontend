@@ -22,10 +22,13 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import weTech.weRide.data.models.vehicles.VehicleResource
 import weTech.weRide.ui.components.WeRideButton
+import weTech.weRide.ui.navigation.Screen
 import weTech.weRide.ui.theme.*
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
@@ -36,13 +39,9 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ScheduledBookingScreen(
     navController: NavController,
+    vehicleId: String,
     viewModel: ScheduledBookingViewModel = koinViewModel {
-        parametersOf(
-            navController.previousBackStackEntry
-                ?.arguments
-                ?.getString("vehicleId") ?: "",
-            1L // TODO: Get from auth state
-        )
+        parametersOf(vehicleId)
     }
 ) {
     val vehicle by viewModel.vehicle.collectAsStateWithLifecycle()
@@ -52,6 +51,7 @@ fun ScheduledBookingScreen(
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val selectedDuration by viewModel.selectedDuration.collectAsStateWithLifecycle()
     val isFormValid by viewModel.isFormValid.collectAsStateWithLifecycle()
+    val estimatedCost by viewModel.estimatedCost.collectAsStateWithLifecycle()
 
     val isCheckingAvailability by viewModel.isCheckingAvailability.collectAsStateWithLifecycle()
     val isAvailable by viewModel.isAvailable.collectAsStateWithLifecycle()
@@ -61,15 +61,13 @@ fun ScheduledBookingScreen(
     val bookingResult by viewModel.bookingResult.collectAsStateWithLifecycle()
     val bookingError by viewModel.bookingError.collectAsStateWithLifecycle()
 
-    val estimatedCost by remember { derivedStateOf { viewModel.getEstimatedCost() } }
-
     // Date picker dialog state
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     // Selected date and time for pickers
-    var pickerDate by remember { mutableStateOf(LocalDate.now()) }
-    var pickerTime by remember { mutableStateOf(LocalTime.of(12, 0)) }
+    var pickerDate by remember { mutableStateOf(LocalDate.now().plusDays(1)) }
+    var pickerTime by remember { mutableStateOf(LocalTime.now().plusHours(1).withMinute(0).withSecond(0)) }
 
     Scaffold(
         topBar = {
@@ -145,12 +143,8 @@ fun ScheduledBookingScreen(
                         onCheckAvailability = { viewModel.checkAvailability() },
                         onConfirmBooking = {
                             viewModel.createScheduledBooking { bookingId ->
-                                // Navigate to confirmation or home
-                                navController.previousBackStackEntry?.destination?.route?.let {
-                                    navController.navigate(it) {
-                                        popUpTo(0)
-                                    }
-                                }
+                                // Navigate back to previous screen or home
+                                navController.navigateUp()
                             }
                         },
                         modifier = Modifier.fillMaxSize()
@@ -163,13 +157,14 @@ fun ScheduledBookingScreen(
     // Date Picker Dialog
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDate = pickerDate
+            initialSelectedDateMillis = System.currentTimeMillis()
         )
 
-        DatePickerDialog(
+        CustomDatePickerDialog(
+            datePickerState = datePickerState,
             onDateSelected = { millis ->
                 millis?.let {
-                    pickerDate = LocalDate.ofEpochDay(it / (24 * 60 * 60 * 1000))
+                    pickerDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
                     viewModel.selectDateTime(LocalDateTime.of(pickerDate, pickerTime))
                 }
                 showDatePicker = false
@@ -205,10 +200,39 @@ fun ScheduledBookingScreen(
     }
 
     // Success dialog
-    LaunchedEffect(bookingResult) {
-        bookingResult?.let { _ ->
-            // Navigate to confirmation screen or show success message
-        }
+    bookingResult?.let { booking ->
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.clearBookingResult()
+                navController.navigateUp()
+            },
+            title = { Text("¡Reserva creada!") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Tu reserva ha sido programada exitosamente.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "ID de reserva: ${booking.bookingId}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearBookingResult()
+                        navController.navigateUp()
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 }
 
@@ -686,17 +710,32 @@ fun AvailabilityCheckCard(
 /**
  * Date picker dialog
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerDialog(
+fun CustomDatePickerDialog(
+    datePickerState: DatePickerState,
     onDateSelected: (Long?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val datePickerState = rememberDatePickerState()
-
     DatePickerDialog(
-        onDateSelected = onDateSelected,
-        onDismiss = onDismiss
-    )
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                }
+            ) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
 }
 
 /**

@@ -20,23 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import org.koin.androidx.compose.koinViewModel
 import weTech.weRide.ui.components.WeRideButton
 import weTech.weRide.ui.theme.*
-
-/**
- * Transaction data
- */
-data class Transaction(
-    val id: String,
-    val type: TransactionType,
-    val amount: Double,
-    val description: String,
-    val date: String
-)
-
-enum class TransactionType {
-    CREDIT, DEBIT
-}
 
 /**
  * Wallet Screen
@@ -46,49 +32,10 @@ enum class TransactionType {
 @Composable
 fun WalletScreen(
     navController: NavController? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: WalletViewModel = koinViewModel()
 ) {
-    val currentBalance = remember { 150.00 }
-    val transactions = remember {
-        listOf(
-            Transaction(
-                id = "1",
-                type = TransactionType.DEBIT,
-                amount = 15.50,
-                description = "Viaje Scooter Xiaomi",
-                date = "Hoy, 14:30"
-            ),
-            Transaction(
-                id = "2",
-                type = TransactionType.CREDIT,
-                amount = 50.00,
-                description = "Recarga Yape",
-                date = "Ayer, 10:15"
-            ),
-            Transaction(
-                id = "3",
-                type = TransactionType.DEBIT,
-                amount = 8.75,
-                description = "Viaje Bicicleta",
-                date = "20 Jun, 09:45"
-            ),
-            Transaction(
-                id = "4",
-                type = TransactionType.CREDIT,
-                amount = 100.00,
-                description = "Recarga Tarjeta",
-                date = "18 Jun, 16:20"
-            ),
-            Transaction(
-                id = "5",
-                type = TransactionType.DEBIT,
-                amount = 22.00,
-                description = "Viaje Motocicleta",
-                date = "15 Jun, 11:30"
-            )
-        )
-    }
-
+    val state by viewModel.state.collectAsState()
     var showAddFundsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -112,55 +59,102 @@ fun WalletScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Balance card
-            BalanceCard(
-                balance = currentBalance,
-                onAddFunds = { showAddFundsDialog = true }
-            )
-
-            // Quick actions
-            QuickActions(
-                onAddFunds = { showAddFundsDialog = true },
-                onTransfer = { /* TODO */ }
-            )
-
-            // Transaction history
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Historial de transacciones",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = { /* TODO: Show all */ }) {
-                        Text("Ver todas")
-                    }
-                }
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    transactions.take(5).forEach { transaction ->
-                        TransactionItem(transaction = transaction)
-                    }
-                }
+                CircularProgressIndicator(color = EnergyGreen)
             }
+        } else {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Balance card
+                BalanceCard(
+                    balance = state.balance,
+                    lastUpdated = state.lastUpdated,
+                    onAddFunds = { showAddFundsDialog = true }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                // Quick actions
+                QuickActions(
+                    onAddFunds = { showAddFundsDialog = true },
+                    onTransfer = { /* TODO */ }
+                )
+
+                // Transaction history
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Historial de transacciones",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(onClick = { /* TODO: Show all */ }) {
+                            Text("Ver todas")
+                        }
+                    }
+
+                    if (state.transactions.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Text(
+                                    text = "Sin transacciones",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Agrega fondos para comenzar",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            state.transactions.take(10).forEach { transaction ->
+                                TransactionItem(transaction = transaction)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 
@@ -169,8 +163,10 @@ fun WalletScreen(
         AddFundsDialog(
             onDismiss = { showAddFundsDialog = false },
             onConfirm = { amount ->
-                showAddFundsDialog = false
-                // TODO: Process add funds
+                viewModel.addFunds(amount) { success ->
+                    showAddFundsDialog = false
+                    // TODO: Show success/error message
+                }
             }
         )
     }
@@ -182,6 +178,7 @@ fun WalletScreen(
 @Composable
 fun BalanceCard(
     balance: Double,
+    lastUpdated: String,
     onAddFunds: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -210,11 +207,13 @@ fun BalanceCard(
                 fontWeight = FontWeight.Bold,
                 color = White
             )
-            Text(
-                text = "Actualizado hoy a las 14:30",
-                style = MaterialTheme.typography.bodySmall,
-                color = White.copy(alpha = 0.8f)
-            )
+            if (lastUpdated.isNotEmpty()) {
+                Text(
+                    text = "Actualizado $lastUpdated",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = White.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }

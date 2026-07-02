@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -151,7 +152,6 @@ fun ProfileSetupScreen(
                 onValueChange = { },
                 label = "Fecha de nacimiento",
                 placeholder = "DD/MM/AAAA",
-                trailingIcon = android.R.drawable.ic_menu_my_calendar,
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth()
             )

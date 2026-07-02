@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import weTech.weRide.ui.screens.activeTrip.ActiveTripScreen
 import weTech.weRide.ui.screens.auth.AuthScreen
+import weTech.weRide.ui.screens.editProfile.EditProfileScreen
 import weTech.weRide.ui.screens.payment.PaymentScreen
 import weTech.weRide.ui.screens.qrscanner.QRScannerScreen
 import weTech.weRide.ui.screens.rating.TripRatingScreen
@@ -87,8 +88,10 @@ private fun NavGraphBuilder.addAuthGraph(navController: NavHostController) {
     // Auth Screen (Login/Register)
     composable(Screen.Auth.route) {
         AuthScreen(
-            onNavigateToPhone = {
-                navController.navigate(Screen.Phone.route)
+            onNavigateToHome = {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
             }
         )
     }
@@ -219,7 +222,7 @@ private fun NavGraphBuilder.addMainAppGraph(navController: NavHostController) {
                 }
             }
         ) {
-            ProfileScreen()
+            ProfileScreen(navController = navController)
         }
     }
 
@@ -238,13 +241,13 @@ private fun NavGraphBuilder.addMainAppGraph(navController: NavHostController) {
     composable(
         route = Screen.Reservation.route,
         arguments = listOf(
-            navArgument("bookingId") { type = NavType.LongType }
+            navArgument("vehicleId") { type = NavType.StringType }
         )
     ) { backStackEntry ->
-        val bookingId = backStackEntry.arguments?.getLong("bookingId") ?: 0L
+        val vehicleId = backStackEntry.arguments?.getString("vehicleId") ?: ""
         ReservationScreen(
             navController = navController,
-            bookingId = bookingId
+            vehicleId = vehicleId
         )
     }
 
@@ -336,7 +339,10 @@ private fun NavGraphBuilder.addMainAppGraph(navController: NavHostController) {
         )
     ) { backStackEntry ->
         val vehicleId = backStackEntry.arguments?.getString("vehicleId") ?: ""
-        ScheduledBookingScreen(navController = navController)
+        ScheduledBookingScreen(
+            navController = navController,
+            vehicleId = vehicleId
+        )
     }
 
     // Help Screen (placeholder)
@@ -344,9 +350,9 @@ private fun NavGraphBuilder.addMainAppGraph(navController: NavHostController) {
         HelpScreen(navController = navController)
     }
 
-    // Profile Edit Screen (placeholder)
+    // Profile Edit Screen
     composable(Screen.ProfileEdit.route) {
-        ProfileEditScreen(navController = navController)
+        EditProfileScreen(navController = navController)
     }
 }
 
@@ -375,35 +381,6 @@ fun HelpScreen(navController: NavController) {
             contentAlignment = Alignment.Center
         ) {
             Text("Centro de ayuda - Próximamente")
-        }
-    }
-}
-
-/**
- * Profile Edit Screen Placeholder
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileEditScreen(navController: NavController) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Editar perfil") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Editar perfil - Próximamente")
         }
     }
 }

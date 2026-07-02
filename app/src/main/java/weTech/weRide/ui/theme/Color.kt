@@ -23,6 +23,9 @@ val ScooterGreen = Color(0xFF4CAF50)
 val BikeBlue = Color(0xFF2196F3)
 val MotorcycleOrange = Color(0xFFFF9800)
 
+// Rating Colors
+val StarYellow = Color(0xFFFFC107)
+
 // Legacy colors (for reference)
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)

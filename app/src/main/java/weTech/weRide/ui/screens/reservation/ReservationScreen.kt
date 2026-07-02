@@ -33,29 +33,28 @@ import weTech.weRide.ui.theme.*
 @Composable
 fun ReservationScreen(
     navController: NavController,
-    bookingId: Long,
+    vehicleId: String,
     viewModel: ReservationViewModel = koinViewModel()
 ) {
+    // Load vehicle and create booking on first composition
+    LaunchedEffect(vehicleId) {
+        if (vehicleId.isNotEmpty()) {
+            viewModel.loadVehicleAndCreateBooking(vehicleId)
+        }
+    }
+
     val vehicle by viewModel.vehicle.collectAsStateWithLifecycle()
     val booking by viewModel.booking.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val remainingTime by viewModel.remainingTime.collectAsStateWithLifecycle()
-    val isTimerRunning by viewModel.isTimerRunning.collectAsStateWithLifecycle()
     val distanceToVehicle by viewModel.distanceToVehicle.collectAsStateWithLifecycle()
     val walkingTime by viewModel.walkingTime.collectAsStateWithLifecycle()
 
     // Handle back press
-    BackHandler(enabled = true) {
+    BackHandler(enabled = booking != null) {
         viewModel.cancelBooking("User pressed back")
         navController.navigateUp()
-    }
-
-    // Show expiration warning
-    LaunchedEffect(remainingTime) {
-        if (viewModel.isAboutToExpire()) {
-            // Show warning
-        }
     }
 
     Scaffold(
@@ -64,7 +63,9 @@ fun ReservationScreen(
                 title = { Text("Reservar vehículo") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.cancelBooking("User pressed back")
+                        if (booking != null) {
+                            viewModel.cancelBooking("User pressed back")
+                        }
                         navController.navigateUp()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -88,7 +89,17 @@ fun ReservationScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = EnergyGreen)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(color = EnergyGreen)
+                            Text(
+                                text = "Creando reserva...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
@@ -103,10 +114,17 @@ fun ReservationScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Icon(
+                                Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
                             Text(
                                 text = error ?: "Error desconocido",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
                             )
                             Button(onClick = { navController.navigateUp() }) {
                                 Text("Volver")

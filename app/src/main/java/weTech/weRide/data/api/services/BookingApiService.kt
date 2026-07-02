@@ -15,6 +15,7 @@ import weTech.weRide.data.models.bookings.CreateBookingRequest
 import weTech.weRide.data.models.bookings.ReportProblemRequest
 import weTech.weRide.data.models.bookings.SaveBookingDraftRequest
 import weTech.weRide.data.models.bookings.SubmitRatingRequest
+import weTech.weRide.data.models.common.PageResponse
 
 /**
  * Booking API Service
@@ -39,49 +40,49 @@ interface BookingApiService {
         @Query("startAtTo") startAtTo: String? = null,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/user/{userId}")
     suspend fun getBookingsByUserId(
         @Path("userId") userId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/user/{userId}/pending")
     suspend fun getPendingBookingsByUser(
         @Path("userId") userId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/user/{userId}/completed")
     suspend fun getCompletedBookingsByUser(
         @Path("userId") userId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/vehicle/{vehicleId}")
     suspend fun getBookingsByVehicle(
         @Path("vehicleId") vehicleId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/status/{status}")
     suspend fun getBookingsByStatus(
         @Path("status") status: String,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @GET("bookings/drafts")
     suspend fun getDraftsByCustomer(
         @Query("customerId") customerId: Long,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<List<BookingResource>>
+    ): Response<PageResponse<BookingResource>>
 
     @POST("bookings/{id}/cancel")
     suspend fun cancelBooking(

@@ -5,13 +5,16 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import weTech.weRide.data.auth.AuthStateManager
 import weTech.weRide.data.models.bookings.BookingResource
 import weTech.weRide.data.models.bookings.CreateBookingRequest
 import weTech.weRide.data.models.vehicles.VehicleResource
 import weTech.weRide.data.repository.BookingRepository
 import weTech.weRide.data.repository.VehicleRepository
 import weTech.weRide.utils.Resource
+import weTech.weRide.utils.getData
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -22,8 +25,8 @@ import java.time.format.DateTimeFormatter
 class ScheduledBookingViewModel(
     private val bookingRepository: BookingRepository,
     private val vehicleRepository: VehicleRepository,
-    private val vehicleId: String,
-    private val userId: Long
+    private val authStateManager: AuthStateManager,
+    private val vehicleId: String
 ) : ViewModel() {
 
     // Vehicle state
@@ -42,6 +45,10 @@ class ScheduledBookingViewModel(
 
     private val _selectedDuration = MutableStateFlow(30) // Default 30 minutes
     val selectedDuration: StateFlow<Int> = _selectedDuration.asStateFlow()
+
+    // Estimated cost
+    private val _estimatedCost = MutableStateFlow<Double?>(null)
+    val estimatedCost: StateFlow<Double?> = _estimatedCost.asStateFlow()
 
     // Availability state
     private val _isCheckingAvailability = MutableStateFlow(false)
@@ -83,6 +90,7 @@ class ScheduledBookingViewModel(
                 is Resource.Success -> {
                     _vehicle.value = result.data
                     _isLoadingVehicle.value = false
+                    updateEstimatedCost()
                 }
                 is Resource.Error -> {
                     _vehicleError.value = result.message
@@ -110,7 +118,19 @@ class ScheduledBookingViewModel(
      */
     fun selectDuration(minutes: Int) {
         _selectedDuration.value = minutes
+        updateEstimatedCost()
         validateForm()
+    }
+
+    /**
+     * Update estimated cost based on vehicle and duration
+     */
+    private fun updateEstimatedCost() {
+        val vehicle = _vehicle.value
+        val duration = _selectedDuration.value
+        if (vehicle != null) {
+            _estimatedCost.value = vehicle.pricePerMinute * duration
+        }
     }
 
     /**
@@ -118,7 +138,6 @@ class ScheduledBookingViewModel(
      */
     private fun validateForm() {
         _isFormValid.value = _selectedDate.value != null &&
-                              _selectedDate.value!!.isAfter(LocalDateTime.now()) &&
                               _selectedDuration.value > 0
     }
 
@@ -126,27 +145,39 @@ class ScheduledBookingViewModel(
      * Check vehicle availability for selected time
      */
     fun checkAvailability() {
-        val startDateTime = _selectedDate.value ?: return
+        val startDateTime = _selectedDate.value ?: run {
+            _isAvailable.value = false
+            _availabilityMessage.value = "Por favor selecciona una fecha y hora"
+            return
+        }
         val endDateTime = startDateTime.plusMinutes(_selectedDuration.value.toLong())
 
         viewModelScope.launch {
             _isCheckingAvailability.value = true
             _availabilityMessage.value = null
+            _isAvailable.value = null // Reset availability state
 
             try {
                 // Check for conflicting bookings
                 val result = bookingRepository.searchBookings(
                     vehicleId = vehicleId.toLong(),
-                    startAtFrom = startDateTime.format(DateTimeFormatter.ISO_DATE_TIME),
-                    startAtTo = endDateTime.format(DateTimeFormatter.ISO_DATE_TIME),
+                    startAtFrom = startDateTime.format(DateTimeFormatter.ISO_DATE),
+                    startAtTo = endDateTime.format(DateTimeFormatter.ISO_DATE),
                     status = "confirmed"
                 )
 
+                android.util.Log.d("ScheduledBooking", "Availability check result: ${result::class.simpleName}")
+
                 when (result) {
                     is Resource.Success -> {
-                        val conflictingBookings = result.data?.filter { booking ->
+                        val bookings = result.data ?: emptyList()
+                        android.util.Log.d("ScheduledBooking", "Found ${bookings.size} bookings")
+
+                        val conflictingBookings = bookings.filter { booking ->
                             booking.status == "confirmed" || booking.status == "active"
-                        } ?: emptyList()
+                        }
+
+                        android.util.Log.d("ScheduledBooking", "Conflicting bookings: ${conflictingBookings.size}")
 
                         if (conflictingBookings.isEmpty()) {
                             _isAvailable.value = true
@@ -161,15 +192,18 @@ class ScheduledBookingViewModel(
                         _isAvailable.value = false
                         _availabilityMessage.value = result.message ?: "Error al verificar disponibilidad"
                         _isCheckingAvailability.value = false
+                        android.util.Log.e("ScheduledBooking", "Availability error: ${result.message}")
                     }
                     else -> {
                         _isCheckingAvailability.value = false
+                        android.util.Log.e("ScheduledBooking", "Unexpected result type")
                     }
                 }
             } catch (e: Exception) {
                 _isAvailable.value = false
                 _availabilityMessage.value = "Error al verificar disponibilidad: ${e.message}"
                 _isCheckingAvailability.value = false
+                android.util.Log.e("ScheduledBooking", "Exception: ${e.message}", e)
             }
         }
     }
@@ -193,22 +227,34 @@ class ScheduledBookingViewModel(
             _isCreatingBooking.value = true
             _bookingError.value = null
 
+            val userId = authStateManager.getUserId().firstOrNull()?.toLongOrNull()
+            if (userId == null) {
+                _bookingError.value = "Usuario no autenticado"
+                _isCreatingBooking.value = false
+                return@launch
+            }
+
             val request = CreateBookingRequest(
                 userId = userId,
                 vehicleId = vehicleId.toLong(),
                 startDate = startDateTime.format(DateTimeFormatter.ISO_DATE_TIME),
-                endDate = endDateTime.format(DateTimeFormatter.ISO_DATE_TIME)
+                endDate = endDateTime.format(DateTimeFormatter.ISO_DATE_TIME),
+                status = "CONFIRMED" // Scheduled bookings are confirmed
             )
 
             when (val result = bookingRepository.createBooking(request)) {
                 is Resource.Success -> {
-                    _bookingResult.value = result.data
+                    val booking = result.getData()
+                    _bookingResult.value = booking
                     _isCreatingBooking.value = false
 
-                    result.data.bookingId.let { bookingId ->
+                    booking?.bookingId?.let { bookingId ->
                         // Schedule notification for 15 minutes before start time
                         scheduleNotification(bookingId, startDateTime)
                         onSuccess(bookingId)
+                    } ?: run {
+                        _bookingError.value = "Error: No se recibió el ID de reserva"
+                        _isCreatingBooking.value = false
                     }
                 }
                 is Resource.Error -> {
@@ -267,15 +313,6 @@ class ScheduledBookingViewModel(
      */
     fun clearBookingResult() {
         _bookingResult.value = null
-    }
-
-    /**
-     * Get estimated cost
-     */
-    fun getEstimatedCost(): Double? {
-        val vehicle = _vehicle.value ?: return null
-        val duration = _selectedDuration.value
-        return vehicle.pricePerMinute * duration
     }
 
     /**

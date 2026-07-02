@@ -10,7 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,21 +22,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import weTech.weRide.ui.components.WeRideCard
+import org.koin.androidx.compose.koinViewModel
 import weTech.weRide.ui.navigation.Screen
 import weTech.weRide.ui.theme.*
-
-/**
- * User profile data (mock)
- */
-data class UserProfile(
-    val name: String,
-    val email: String,
-    val phone: String,
-    val memberSince: String,
-    val totalTrips: Int,
-    val rating: Double
-)
 
 /**
  * Profile Menu Item
@@ -54,18 +45,10 @@ data class ProfileMenuItem(
 @Composable
 fun ProfileScreen(
     navController: NavController? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ProfileViewModel = koinViewModel()
 ) {
-    val userProfile = remember {
-        UserProfile(
-            name = "Juan Pérez",
-            email = "juan.perez@email.com",
-            phone = "+51 987 654 321",
-            memberSince = "Mar 2024",
-            totalTrips = 42,
-            rating = 4.8
-        )
-    }
+    val profile by viewModel.profileState.collectAsState()
 
     val menuItems = remember {
         listOf(
@@ -77,7 +60,7 @@ fun ProfileScreen(
             ),
             ProfileMenuItem(
                 title = "Mi billetera",
-                subtitle = "S/ 150.00 disponibles",
+                subtitle = null,
                 icon = Icons.Default.AccountBalanceWallet,
                 route = Screen.Wallet.route
             ),
@@ -107,64 +90,87 @@ fun ProfileScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // User profile card
-            UserProfileCard(profile = userProfile)
-
-            // Menu items
+        if (profile.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = EnergyGreen)
+            }
+        } else {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                menuItems.forEach { item ->
-                    ProfileMenuItemCard(
-                        item = item,
-                        onClick = {
-                            item.route?.let { route ->
-                                navController?.navigate(route)
-                            } ?: item.onClick?.invoke()
-                        }
-                    )
-                }
-            }
-
-            // Logout button
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = ErrorRed.copy(alpha = 0.1f)
+                // User profile card
+                UserProfileCard(
+                    name = profile.name,
+                    email = profile.email,
+                    totalTrips = profile.totalTrips,
+                    rating = profile.rating,
+                    memberSince = profile.memberSince
                 )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { /* TODO: Implement logout */ }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.ExitToApp,
-                        contentDescription = null,
-                        tint = ErrorRed
-                    )
-                    Text(
-                        text = "Cerrar sesión",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = ErrorRed
-                    )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                // Menu items
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    menuItems.forEach { item ->
+                        ProfileMenuItemCard(
+                            item = item,
+                            onClick = {
+                                item.route?.let { route ->
+                                    navController?.navigate(route)
+                                } ?: item.onClick?.invoke()
+                            }
+                        )
+                    }
+                }
+
+                // Logout button
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = ErrorRed.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.logout {
+                                    navController?.navigate(Screen.Auth.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            }
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.ExitToApp,
+                            contentDescription = null,
+                            tint = ErrorRed
+                        )
+                        Text(
+                            text = "Cerrar sesión",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = ErrorRed
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }
@@ -174,7 +180,11 @@ fun ProfileScreen(
  */
 @Composable
 fun UserProfileCard(
-    profile: UserProfile,
+    name: String,
+    email: String,
+    totalTrips: Int,
+    rating: Double,
+    memberSince: String,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -197,7 +207,7 @@ fun UserProfileCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = profile.name.first().toString(),
+                    text = name.first().uppercaseChar().toString(),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
                     color = EnergyGreen
@@ -210,15 +220,17 @@ fun UserProfileCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = profile.name,
+                    text = name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = profile.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (email.isNotEmpty()) {
+                    Text(
+                        text = email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // Stats
@@ -227,17 +239,17 @@ fun UserProfileCard(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatItem(
-                    value = profile.totalTrips.toString(),
+                    value = totalTrips.toString(),
                     label = "Viajes"
                 )
                 VerticalDivider()
                 StatItem(
-                    value = String.format("%.1f", profile.rating),
+                    value = if (rating > 0) String.format("%.1f", rating) else "-",
                     label = "Calificación"
                 )
                 VerticalDivider()
                 StatItem(
-                    value = profile.memberSince,
+                    value = memberSince,
                     label = "Miembro desde"
                 )
             }

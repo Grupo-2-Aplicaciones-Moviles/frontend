@@ -18,19 +18,19 @@ class AuthRepository(
 ) {
 
     /**
-     * Sign in with email and password
+     * Sign in with username and password
      */
-    suspend fun signIn(email: String, password: String): Resource<AuthResponse> {
+    suspend fun signIn(username: String, password: String): Resource<AuthResponse> {
         return try {
-            val response = authApiService.signIn(SignInRequest(email, password))
+            val response = authApiService.signIn(SignInRequest(username, password))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 // Save token
                 tokenManager.saveToken(authResponse.token)
                 tokenManager.saveUserInfo(
                     userId = authResponse.id.toString(),
-                    email = email,
-                    name = "" // Will be updated from profile API
+                    email = username,
+                    name = username.split('@').firstOrNull() ?: username // Use username before @ as display name
                 )
                 Resource.Success(authResponse)
             } else {
@@ -42,19 +42,19 @@ class AuthRepository(
     }
 
     /**
-     * Sign up with email and password
+     * Sign up with username and password
      */
-    suspend fun signUp(email: String, password: String): Resource<AuthResponse> {
+    suspend fun signUp(username: String, password: String): Resource<AuthResponse> {
         return try {
-            val response = authApiService.signUp(SignUpRequest(email, password))
+            val response = authApiService.signUp(SignUpRequest(username, password))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 // Save token
                 tokenManager.saveToken(authResponse.token)
                 tokenManager.saveUserInfo(
                     userId = authResponse.id.toString(),
-                    email = email,
-                    name = "" // Will be updated from profile API
+                    email = username,
+                    name = username.split('@').firstOrNull() ?: username // Use username before @ as display name
                 )
                 Resource.Success(authResponse)
             } else {

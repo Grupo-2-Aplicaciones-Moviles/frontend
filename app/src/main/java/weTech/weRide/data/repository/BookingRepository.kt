@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import weTech.weRide.data.api.services.BookingApiService
 import weTech.weRide.data.auth.AuthStateManager
 import weTech.weRide.data.models.bookings.BookingResource
+import weTech.weRide.data.models.common.PageResponse
 import weTech.weRide.data.models.bookings.CancelBookingRequest
 import weTech.weRide.data.models.bookings.CreateBookingRequest
 import weTech.weRide.data.models.bookings.SaveBookingDraftRequest
@@ -90,8 +91,13 @@ class BookingRepository(
                 page = page,
                 size = size
             )
-            if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+            if (response.isSuccessful) {
+                val pageResponse = response.body()
+                if (pageResponse != null) {
+                    Resource.Success(pageResponse.content)
+                } else {
+                    Resource.Success(emptyList())
+                }
             } else {
                 Resource.Error(response.message() ?: "Failed to search bookings")
             }
@@ -107,7 +113,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getBookingsByUserId(userId, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch user bookings")
             }
@@ -123,7 +129,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getPendingBookingsByUser(userId, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch pending bookings")
             }
@@ -139,7 +145,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getCompletedBookingsByUser(userId, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch completed bookings")
             }
@@ -155,7 +161,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getBookingsByVehicle(vehicleId, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch vehicle bookings")
             }
@@ -171,7 +177,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getBookingsByStatus(status, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch bookings by status")
             }
@@ -187,7 +193,7 @@ class BookingRepository(
         return try {
             val response = bookingApiService.getDraftsByCustomer(customerId, page, size)
             if (response.isSuccessful && response.body() != null) {
-                Resource.Success(response.body()!!)
+                Resource.Success(response.body()!!.content)
             } else {
                 Resource.Error(response.message() ?: "Failed to fetch draft bookings")
             }

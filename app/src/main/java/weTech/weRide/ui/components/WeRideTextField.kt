@@ -59,7 +59,8 @@ fun WeRideTextField(
     singleLine: Boolean = true,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     focusRequester: FocusRequester? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    readOnly: Boolean = false
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(!isPassword) }
 
@@ -69,76 +70,150 @@ fun WeRideTextField(
         VisualTransformation.None
     }
 
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(if (isError) 80.dp else 64.dp)
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable { onClick() }
+    val interactionSource = remember { MutableInteractionSource() }
+    val textFieldInteractionSource = remember { MutableInteractionSource() }
+
+    if (onClick != null) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(if (isError) 80.dp else 64.dp)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {
+                    onClick()
+                }
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = label?.let { { Text(it, fontSize = 14.sp) } },
+                placeholder = placeholder?.let { { Text(it, fontSize = 14.sp) } },
+                leadingIcon = leadingIcon?.let { icon ->
+                    {
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = icon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 16.dp, end = 12.dp)
+                        )
+                    }
+                },
+                trailingIcon = if (isPassword) {
+                    {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 } else {
-                    Modifier
-                }
-            ),
-        label = label?.let { { Text(it, fontSize = 14.sp) } },
-        placeholder = placeholder?.let { { Text(it, fontSize = 14.sp) } },
-        leadingIcon = leadingIcon?.let { icon ->
-            {
-                Icon(
-                    painter = androidx.compose.ui.res.painterResource(id = icon),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(start = 16.dp, end = 12.dp)
-                )
-            }
-        },
-        trailingIcon = if (isPassword) {
-            {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-            }
-        } else {
-            trailingIcon?.let { icon ->
+                    trailingIcon?.let { icon ->
+                        {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(id = icon),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                        }
+                    }
+                },
+                visualTransformation = visualTransformation,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = keyboardType,
+                    imeAction = imeAction
+                ),
+                keyboardActions = KeyboardActions(
+                    onAny = { onImeAction() }
+                ),
+                isError = isError,
+                enabled = false,
+                singleLine = singleLine,
+                maxLines = maxLines,
+                readOnly = true,
+                shape = MaterialTheme.shapes.medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    errorBorderColor = MaterialTheme.colorScheme.error,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                interactionSource = textFieldInteractionSource
+            )
+        }
+    } else {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier
+                .fillMaxWidth()
+                .height(if (isError) 80.dp else 64.dp),
+            label = label?.let { { Text(it, fontSize = 14.sp) } },
+            placeholder = placeholder?.let { { Text(it, fontSize = 14.sp) } },
+            leadingIcon = leadingIcon?.let { icon ->
                 {
                     Icon(
                         painter = androidx.compose.ui.res.painterResource(id = icon),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(end = 12.dp)
+                        modifier = Modifier.padding(start = 16.dp, end = 12.dp)
                     )
                 }
-            }
-        },
-        visualTransformation = visualTransformation,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = imeAction
-        ),
-        keyboardActions = KeyboardActions(
-            onAny = { onImeAction() }
-        ),
-        isError = isError,
-        enabled = enabled,
-        singleLine = singleLine,
-        maxLines = maxLines,
-        shape = MaterialTheme.shapes.medium,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            errorBorderColor = MaterialTheme.colorScheme.error,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            cursorColor = MaterialTheme.colorScheme.primary
-        ),
-        interactionSource = remember { MutableInteractionSource() }
-    )
+            },
+            trailingIcon = if (isPassword) {
+                {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            } else {
+                trailingIcon?.let { icon ->
+                    {
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = icon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                    }
+                }
+            },
+            visualTransformation = visualTransformation,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction = imeAction
+            ),
+            keyboardActions = KeyboardActions(
+                onAny = { onImeAction() }
+            ),
+            isError = isError,
+            enabled = enabled,
+            singleLine = singleLine,
+            maxLines = maxLines,
+            readOnly = readOnly,
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            interactionSource = remember { MutableInteractionSource() }
+        )
+    }
 
     if (isError && errorMessage != null) {
         Box(modifier = Modifier.padding(start = 16.dp, top = 4.dp)) {

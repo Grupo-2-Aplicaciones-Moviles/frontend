@@ -1,6 +1,7 @@
 package weTech.weRide.di
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -45,16 +46,12 @@ val networkModule = module {
                 .header("Accept", "application/json")
 
             // Add auth token if available (blocking call for simplicity)
-            // In production, consider using a more sophisticated approach
             try {
-                runBlocking {
-                    tokenManager.getToken().collect { token ->
-                        if (token != null) {
-                            requestBuilder.header("Authorization", "Bearer $token")
-                            // Only collect first value
-                            return@collect
-                        }
-                    }
+                val token = runBlocking {
+                    tokenManager.getToken().first() // Get first emission only
+                }
+                if (token != null) {
+                    requestBuilder.header("Authorization", "Bearer $token")
                 }
             } catch (e: Exception) {
                 // Ignore token errors

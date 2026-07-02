@@ -19,19 +19,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 import weTech.weRide.ui.components.WeRideButton
 import weTech.weRide.ui.components.WeRideOutlinedButton
-import weTech.weRide.ui.components.WeRideEmailField
 import weTech.weRide.ui.components.WeRidePasswordField
+import weTech.weRide.ui.components.WeRideTextField
 import weTech.weRide.ui.theme.EnergyGreen
 import weTech.weRide.ui.theme.WeRideTheme
 
@@ -42,7 +44,8 @@ import weTech.weRide.ui.theme.WeRideTheme
 @Composable
 fun AuthScreen(
     modifier: Modifier = Modifier,
-    onNavigateToPhone: () -> Unit
+    viewModel: AuthViewModel = koinViewModel(),
+    onNavigateToHome: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Iniciar Sesión", "Registrarse")
@@ -99,8 +102,14 @@ fun AuthScreen(
 
         // Form Content
         when (selectedTab) {
-            0 -> LoginForm(onNavigateToPhone = onNavigateToPhone)
-            1 -> RegisterForm(onNavigateToPhone = onNavigateToPhone)
+            0 -> LoginForm(
+                viewModel = viewModel,
+                onNavigateToHome = onNavigateToHome
+            )
+            1 -> RegisterForm(
+                viewModel = viewModel,
+                onNavigateToHome = onNavigateToHome
+            )
         }
     }
 }
@@ -110,21 +119,24 @@ fun AuthScreen(
  */
 @Composable
 private fun LoginForm(
-    onNavigateToPhone: () -> Unit
+    viewModel: AuthViewModel,
+    onNavigateToHome: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+
+    val loginState = viewModel.loginState
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        WeRideEmailField(
-            value = email,
-            onValueChange = { email = it },
-            label = "Email",
-            placeholder = "correo@ejemplo.com"
+        WeRideTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = "Usuario",
+            placeholder = "testuser1"
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -132,20 +144,33 @@ private fun LoginForm(
         WeRidePasswordField(
             value = password,
             onValueChange = { password = it },
-            label = "Contraseña"
+            label = "Contraseña",
+            imeAction = androidx.compose.ui.text.input.ImeAction.Done
         )
+
+        if (loginState is AuthState.Error) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = loginState.message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         WeRideButton(
             onClick = {
-                isLoading = true
-                // TODO: Implement login logic
-                // For now, navigate to phone screen
-                onNavigateToPhone()
+                coroutineScope.launch {
+                    val success = viewModel.signIn(username, password)
+                    if (success) {
+                        onNavigateToHome()
+                    }
+                }
             },
             text = "Iniciar Sesión",
-            isLoading = isLoading
+            enabled = username.isNotEmpty() && password.isNotEmpty() && loginState !is AuthState.Loading,
+            isLoading = loginState is AuthState.Loading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -163,29 +188,36 @@ private fun LoginForm(
  */
 @Composable
 private fun RegisterForm(
-    onNavigateToPhone: () -> Unit
+    viewModel: AuthViewModel,
+    onNavigateToHome: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    var showPasswordError by remember { mutableStateOf(false) }
+
+    val registerState = viewModel.registerState
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        WeRideEmailField(
-            value = email,
-            onValueChange = { email = it },
-            label = "Email",
-            placeholder = "correo@ejemplo.com"
+        WeRideTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = "Usuario",
+            placeholder = "Elige un nombre de usuario"
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         WeRidePasswordField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                showPasswordError = false
+            },
             label = "Contraseña"
         )
 
@@ -197,25 +229,45 @@ private fun RegisterForm(
             label = "Confirmar Contraseña"
         )
 
+        if (showPasswordError) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Las contraseñas no coinciden",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        if (registerState is AuthState.Error) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = registerState.message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         WeRideButton(
             onClick = {
-                isLoading = true
-                // TODO: Implement registration logic
-                // For now, navigate to phone screen
-                onNavigateToPhone()
+                if (password != confirmPassword) {
+                    showPasswordError = true
+                } else {
+                    coroutineScope.launch {
+                        val success = viewModel.signUp(username, password)
+                        if (success) {
+                            onNavigateToHome()
+                        }
+                    }
+                }
             },
             text = "Registrarse",
-            isLoading = isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Google Sign Up Button
-        WeRideOutlinedButton(
-            onClick = { /* TODO: Implement Google Sign Up */ },
-            text = "Registrarse con Google"
+            enabled = username.isNotEmpty() &&
+                     password.isNotEmpty() &&
+                     confirmPassword.isNotEmpty() &&
+                     registerState !is AuthState.Loading,
+            isLoading = registerState is AuthState.Loading
         )
     }
 }
@@ -225,7 +277,7 @@ private fun RegisterForm(
 fun AuthScreenPreview() {
     WeRideTheme {
         AuthScreen(
-            onNavigateToPhone = {}
+            onNavigateToHome = {}
         )
     }
 }

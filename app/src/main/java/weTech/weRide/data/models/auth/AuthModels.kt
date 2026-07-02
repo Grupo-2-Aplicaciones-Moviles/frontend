@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName
  * Sign In Request
  */
 data class SignInRequest(
-    val email: String,
+    val username: String,
     val password: String
 )
 
@@ -14,7 +14,7 @@ data class SignInRequest(
  * Sign Up Request
  */
 data class SignUpRequest(
-    val email: String,
+    val username: String,
     val password: String
 )
 

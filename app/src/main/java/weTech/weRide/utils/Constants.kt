@@ -2,7 +2,9 @@ package weTech.weRide.utils
 
 object Constants {
     // API Configuration
-    const val BASE_URL = "http://10.0.2.2:8080/api/v1/"
+    // Use emulator alias (10.0.2.2) or actual host IP (192.168.1.38)
+    // If 10.0.2.2 doesn't work, try your machine's local IP
+    const val BASE_URL = "http://192.168.1.38:8080/api/v1/"
     const val TIMEOUT_CONNECT = 30L
     const val TIMEOUT_READ = 30L
     const val TIMEOUT_WRITE = 30L
@@ -22,6 +24,9 @@ object Constants {
     const val KEY_USER_NAME = "user_name"
     const val KEY_USER_PHOTO = "user_photo"
     const val KEY_IS_LOGGED_IN = "is_logged_in"
+    const val KEY_WALLET_BALANCE = "wallet_balance"
+    const val KEY_WALLET_TRANSACTIONS = "wallet_transactions"
+    const val KEY_WALLET_LAST_UPDATED = "wallet_last_updated"
 
     // Navigation Routes
     const val ROUTE_SPLASH = "splash"

@@ -112,7 +112,10 @@ data class CreateBookingRequest(
     val startDate: String, // ISO datetime string
     val endDate: String, // ISO datetime string
     val startLocationId: Long? = null,
-    val endLocationId: Long? = null
+    val endLocationId: Long? = null,
+    val paymentMethod: String = "WALLET", // WALLET, CARD, YAPE, PLIN
+    val paymentStatus: String = "PENDING", // PENDING, PAID, FAILED
+    val status: String = "DRAFT" // DRAFT, CONFIRMED, ACTIVE, COMPLETED, CANCELLED
 )
 
 /**
