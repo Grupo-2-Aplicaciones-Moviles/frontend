@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ElectricMoped
+import androidx.compose.material.icons.filled.Motorcycle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -115,10 +117,10 @@ fun VehicleSheetContent(
                 ) {
                     Icon(
                         imageVector = when (vehicle.type.lowercase()) {
-                            "scooter" -> Icons.Default.ElectricScooter
+                            "scooter" -> Icons.Default.ElectricMoped
                             "bike" -> Icons.Default.DirectionsBike
-                            "motorcycle" -> Icons.Default.TwoWheeler
-                            else -> Icons.Default.ElectricScooter
+                            "motorcycle" -> Icons.Default.Motorcycle
+                            else -> Icons.Default.ElectricMoped
                         },
                         contentDescription = vehicle.type,
                         tint = EnergyGreen,
@@ -248,9 +250,9 @@ fun VehicleSheetContent(
 
         // Reserve button
         WeRideButton(
-            text = "Reservar ahora",
             onClick = onNavigate,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            text = "Reservar ahora"
         )
 
         // License plate

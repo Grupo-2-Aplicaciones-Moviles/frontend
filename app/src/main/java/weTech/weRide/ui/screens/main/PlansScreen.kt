@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,22 +29,20 @@ import weTech.weRide.ui.theme.*
 data class SubscriptionPlan(
     val id: String,
     val name: String,
+    val description: String,
     val price: Double,
     val duration: String,
-    val features: List<String>,
-    val isPopular: Boolean = false,
-    val discountPercent: Int? = null
+    val pricePerMinute: Double,
+    val discount: Int,
+    val freeMinutes: Int,
+    val benefits: List<String>,
+    val isPopular: Boolean = false
 ) {
     val formattedPrice: String
-        get() = "S/ $price"
+        get() = "S/ $price/mes"
 
-    val pricePerMonth: Double
-        get() = when (duration) {
-            "weekly" -> price * 4
-            "monthly" -> price
-            "yearly" -> price / 12
-            else -> price
-        }
+    val formattedPricePerMinute: String
+        get() = "S/ $pricePerMinute/min"
 }
 
 /**
@@ -60,51 +58,65 @@ fun PlansScreen(
     val plans = remember {
         listOf(
             SubscriptionPlan(
-                id = "basic",
-                name = "Básico",
-                price = 9.90,
-                duration = "monthly",
-                features = listOf(
-                    "50 viajes gratis al mes",
-                    "10% de descuento en viajes extra",
-                    "Soporte por email",
-                    "Sin prioridad en reservas"
+                id = "normal",
+                name = "Plan Normal",
+                description = "Ideal para usuarios ocasionales que buscan una opción económica",
+                price = 3.99,
+                duration = "Mensual",
+                pricePerMinute = 0.6,
+                discount = 10,
+                freeMinutes = 30,
+                benefits = listOf(
+                    "Acceso a scooters estándar",
+                    "10% de descuento en cada viaje",
+                    "Soporte básico al cliente",
+                    "30 minutos gratis al mes"
                 ),
                 isPopular = false
             ),
             SubscriptionPlan(
-                id = "standard",
-                name = "Estándar",
-                price = 19.90,
-                duration = "monthly",
-                features = listOf(
-                    "100 viajes gratis al mes",
-                    "15% de descuento en viajes extra",
-                    "Soporte prioritario",
-                    "Reservas con 30 min de anticipación",
-                    "Seguro básico incluido"
+                id = "student",
+                name = "Plan Estudiante",
+                description = "Perfecto para estudiantes que necesitan movilidad frecuente",
+                price = 5.99,
+                duration = "Mensual",
+                pricePerMinute = 0.4,
+                discount = 20,
+                freeMinutes = 60,
+                benefits = listOf(
+                    "Acceso a scooters premium",
+                    "20% de descuento en cada viaje",
+                    "Soporte prioritario al cliente",
+                    "Viajes ilimitados los fines de semana",
+                    "60 minutos gratis al mes"
                 ),
                 isPopular = true
             ),
             SubscriptionPlan(
-                id = "premium",
-                name = "Premium",
-                price = 39.90,
-                duration = "monthly",
-                features = listOf(
+                id = "business",
+                name = "Plan Business",
+                description = "Solución completa para profesionales y empresas",
+                price = 9.99,
+                duration = "Mensual",
+                pricePerMinute = 0.3,
+                discount = 30,
+                freeMinutes = 120,
+                benefits = listOf(
+                    "Acceso a todos los vehículos",
+                    "30% de descuento en cada viaje",
+                    "Soporte prioritario 24/7",
                     "Viajes ilimitados",
-                    "25% de descuento siempre",
-                    "Soporte 24/7",
-                    "Reservas instantáneas",
-                    "Seguro completo incluido",
-                    "Vehículos exclusivos",
-                    "Sin tarifas de cancelación"
+                    "120 minutos gratis al mes",
+                    "Reportes mensuales",
+                    "Facturación centralizada"
                 ),
-                isPopular = false,
-                discountPercent = 20
+                isPopular = false
             )
         )
     }
+
+    var selectedPlan by remember { mutableStateOf<String?>(null) }
+    var showPaymentDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -132,14 +144,34 @@ fun PlansScreen(
             plans.forEach { plan ->
                 PlanCard(
                     plan = plan,
+                    isSelected = selectedPlan == plan.id,
                     onSelectPlan = {
-                        navController?.navigate(Screen.Payment.createRoute(plan.id))
+                        selectedPlan = plan.id
+                    },
+                    onPayClick = {
+                        selectedPlan = plan.id
+                        showPaymentDialog = true
                     }
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // Payment confirmation dialog
+    if (showPaymentDialog) {
+        PaymentConfirmationDialog(
+            plan = plans.first { it.id == selectedPlan },
+            onConfirm = {
+                showPaymentDialog = false
+                // TODO: Navigate to payment screen when ready
+                // navController?.navigate(Screen.Payment.createRoute(selectedPlan ?: ""))
+            },
+            onDismiss = {
+                showPaymentDialog = false
+            }
+        )
     }
 }
 
@@ -174,7 +206,9 @@ fun PlansHeader(modifier: Modifier = Modifier) {
 @Composable
 fun PlanCard(
     plan: SubscriptionPlan,
+    isSelected: Boolean,
     onSelectPlan: () -> Unit,
+    onPayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -192,6 +226,11 @@ fun PlanCard(
                 2.dp,
                 EnergyGreen
             )
+        } else if (isSelected) {
+            androidx.compose.foundation.BorderStroke(
+                2.dp,
+                MaterialTheme.colorScheme.primary
+            )
         } else null
     ) {
         Column(
@@ -200,14 +239,15 @@ fun PlanCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
+            // Header with popular badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = plan.name,
@@ -215,9 +255,9 @@ fun PlanCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "S/ ${plan.price}/mes",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        text = plan.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -237,46 +277,54 @@ fun PlanCard(
                 }
             }
 
-            // Discount badge
-            plan.discountPercent?.let { discount ->
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = WarningOrange.copy(alpha = 0.2f)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalOffer,
-                            contentDescription = null,
-                            tint = WarningOrange,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Ahorra $discount%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = WarningOrange
-                        )
-                    }
-                }
-            }
-
-            // Features
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            // Price
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                plan.features.forEach { feature ->
-                    FeatureRow(feature = feature)
+                Text(
+                    text = plan.formattedPrice,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Plan details
+            PlanDetailRow(label = "Duración", value = plan.duration)
+            PlanDetailRow(label = "Precio por minuto", value = plan.formattedPricePerMinute)
+            PlanDetailRow(
+                label = "Descuento",
+                value = "${plan.discount}%",
+                valueColor = SuccessGreen
+            )
+            PlanDetailRow(label = "Minutos gratis al mes", value = "${plan.freeMinutes} min")
+
+            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Benefits header
+            Text(
+                text = "Beneficios:",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Benefits list
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                plan.benefits.forEach { benefit ->
+                    BenefitRow(benefit = benefit)
                 }
             }
 
-            // Select button
+            // Pay button
             WeRideButton(
-                text = if (plan.isPopular) "Seleccionar plan" else "Ver detalles",
-                onClick = onSelectPlan,
+                text = "Pagar",
+                onClick = onPayClick,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -284,11 +332,39 @@ fun PlanCard(
 }
 
 /**
- * Feature row with checkmark
+ * Plan detail row
  */
 @Composable
-fun FeatureRow(
-    feature: String,
+fun PlanDetailRow(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = valueColor
+        )
+    }
+}
+
+/**
+ * Benefit row with checkmark
+ */
+@Composable
+fun BenefitRow(
+    benefit: String,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -311,7 +387,7 @@ fun FeatureRow(
             )
         }
         Text(
-            text = feature,
+            text = benefit,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f)
         )
@@ -319,47 +395,61 @@ fun FeatureRow(
 }
 
 /**
- * Compare plans banner
+ * Payment confirmation dialog
  */
 @Composable
-fun CompareBanner(
-    onCompare: () -> Unit,
-    modifier: Modifier = Modifier
+fun PaymentConfirmationDialog(
+    plan: SubscriptionPlan,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = InfoBlue.copy(alpha = 0.1f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Suscribirse a ${plan.name}",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Compare,
-                    contentDescription = null,
-                    tint = InfoBlue
-                )
                 Text(
-                    text = "Comparar planes",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Se te cobrará ${plan.formattedPrice} mensualmente",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Incluye:",
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
+                plan.benefits.take(3).forEach { benefit ->
+                    Text(
+                        text = "• $benefit",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (plan.benefits.size > 3) {
+                    Text(
+                        text = "• ...y ${plan.benefits.size - 3} beneficios más",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = null
-            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Continuar al pago")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         }
-    }
+    )
 }

@@ -2,18 +2,27 @@ package weTech.weRide.ui.screens.main.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ElectricMoped
+import androidx.compose.material.icons.filled.Motorcycle
+import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,17 +32,11 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapType
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberMarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import org.koin.androidx.compose.koinViewModel
 import kotlinx.coroutines.launch
 import weTech.weRide.ui.components.SkeletonMap
-import weTech.weRide.ui.theme.EnergyGreen
+import weTech.weRide.ui.components.StaticMap
+import weTech.weRide.ui.theme.*
 
 /**
  * Home Screen with interactive map and vehicle markers
@@ -64,32 +67,6 @@ fun HomeScreen(
     // UI state
     var showFilterSheet by remember { mutableStateOf(false) }
     var showVehicleBottomSheet by remember { mutableStateOf(false) }
-
-    // Camera position
-    val cameraPositionState = rememberCameraPositionState {
-        LocationUtils.getDefaultCameraPosition()
-    }
-
-    // Map properties
-    val mapProperties by remember(selectedVehicle) {
-        mutableStateOf(
-            MapProperties(
-                isMyLocationEnabled = LocationUtils.hasLocationPermissions(context),
-                mapType = MapType.NORMAL
-            )
-        )
-    }
-
-    val mapUiSettings by remember {
-        mutableStateOf(
-            MapUiSettings(
-                myLocationButtonEnabled = false,
-                zoomControlsEnabled = false,
-                compassEnabled = true,
-                mapToolbarEnabled = false
-            )
-        )
-    }
 
     // Location permissions
     val locationPermissions = rememberMultiplePermissionsState(
@@ -138,57 +115,31 @@ fun HomeScreen(
         }
     }
 
-    // Update camera when user location is available
-    LaunchedEffect(userLocation) {
-        userLocation?.let { location ->
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(location, 15f)
-            )
-        }
-    }
-
     // Show bottom sheet when vehicle is selected
     LaunchedEffect(selectedVehicle) {
         showVehicleBottomSheet = selectedVehicle != null
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Map
-        GoogleMap(
-            cameraPositionState = cameraPositionState,
-            properties = mapProperties,
-            uiSettings = mapUiSettings,
-            onMapLoaded = { /* Map loaded */ },
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Vehicle markers will be added here
-            vehicles.forEach { vehicle ->
-                val vehicleLocation = parseLocationToLatLng(vehicle.location)
-                Marker(
-                    state = rememberMarkerState(position = vehicleLocation),
-                    title = "${vehicle.brand} ${vehicle.model}",
-                    snippet = "Batería: ${vehicle.battery}%",
-                    onClick = {
-                        viewModel.selectVehicle(vehicle)
-                        showVehicleBottomSheet = true
-                        scope.launch {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(vehicleLocation, 17f)
-                            )
-                        }
-                        true
-                    }
-                )
-            }
+    // View mode state
+    var showVehicleList by remember { mutableStateOf(false) }
 
-            // User location marker
-            userLocation?.let { location ->
-                Marker(
-                    state = rememberMarkerState(position = location),
-                    title = "Tu ubicación"
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        // Map center - use user location or default
+        val mapCenter = userLocation ?: LocationUtils.getDefaultLocation()
+
+        // Static Map using Geoapify API
+        StaticMap(
+            center = mapCenter,
+            vehicles = vehicles,
+            userLocation = userLocation,
+            modifier = Modifier.fillMaxSize(),
+            zoom = 15,
+            apiKey = "19cc9e8a03e74f38a34c2698d0cf30e0",
+            onVehicleClick = { vehicle ->
+                viewModel.selectVehicle(vehicle)
+                showVehicleBottomSheet = true
             }
-        }
+        )
 
         // Search bar
         HomeSearchBar(
@@ -222,6 +173,31 @@ fun HomeScreen(
             )
         }
 
+        // Vehicle list preview at bottom (shows first few vehicles)
+        if (vehicles.isNotEmpty() && !showVehicleBottomSheet) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 80.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(vehicles.take(3)) { vehicle ->
+                        VehiclePreviewCard(
+                            vehicle = vehicle,
+                            onClick = {
+                                viewModel.selectVehicle(vehicle)
+                                showVehicleBottomSheet = true
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         // Loading indicator with skeleton map
         if (isLoading && vehicles.isEmpty()) {
             Box(
@@ -239,15 +215,39 @@ fun HomeScreen(
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .zIndex(1f),
                 shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 4.dp
             ) {
                 Text(
                     text = "${vehicles.size} vehículos",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+
+        // Empty state message
+        if (!isLoading && vehicles.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "No hay vehículos disponibles",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Intenta con otros filtros o busca en otra área",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -355,5 +355,129 @@ private fun parseLocationToLatLng(location: String): LatLng {
         }
     } catch (e: Exception) {
         LatLng(-12.0464, -77.0429)
+    }
+}
+
+/**
+ * Vehicle preview card for the bottom list view
+ */
+@Composable
+private fun VehiclePreviewCard(
+    vehicle: weTech.weRide.data.models.vehicles.VehicleResource,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Type icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        when (vehicle.type.lowercase()) {
+                            "scooter" -> ScooterGreen.copy(alpha = 0.1f)
+                            "bike" -> BikeBlue.copy(alpha = 0.1f)
+                            "motorcycle" -> MotorcycleOrange.copy(alpha = 0.1f)
+                            else -> EnergyGreen.copy(alpha = 0.1f)
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when (vehicle.type.lowercase()) {
+                        "scooter" -> Icons.Default.ElectricMoped
+                        "bike" -> Icons.Default.DirectionsBike
+                        "motorcycle" -> Icons.Default.Motorcycle
+                        else -> Icons.Default.ElectricMoped
+                    },
+                    contentDescription = vehicle.type,
+                    tint = when (vehicle.type.lowercase()) {
+                        "scooter" -> ScooterGreen
+                        "bike" -> BikeBlue
+                        "motorcycle" -> MotorcycleOrange
+                        else -> EnergyGreen
+                    },
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Vehicle info
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "${vehicle.brand} ${vehicle.model}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Battery
+                    Text(
+                        text = "${vehicle.battery}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when {
+                            vehicle.battery >= 50 -> EnergyGreen
+                            vehicle.battery >= 20 -> Color(0xFFFFC107)
+                            else -> Color(0xFFF44336)
+                        }
+                    )
+                    // Range
+                    Text(
+                        text = "${vehicle.range}km",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Price and rating
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "S/${String.format("%.2f", vehicle.pricePerMinute)}/min",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = EnergyGreen
+                )
+                vehicle.rating?.let {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = StarYellow,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = vehicle.getRatingFormatted(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }

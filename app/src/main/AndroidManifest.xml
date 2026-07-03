@@ -32,12 +32,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
 
-        <!-- Maps API Key -->
+        <!-- Geoapify Static Map API Key -->
         <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_MAPS_API_KEY_HERE" />
+            android:name="com.geoapify.api.key"
+            android:value="19cc9e8a03e74f38a34c2698d0cf30e0" />
 
         <!-- Booking Reminder Receiver for scheduled notifications -->
         <receiver

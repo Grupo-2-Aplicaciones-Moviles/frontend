@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import weTech.weRide.data.models.vehicles.VehicleResource
 import weTech.weRide.data.repository.VehicleRepository
+import java.util.Date
 
 /**
  * ViewModel for Home Screen
@@ -73,6 +74,9 @@ class HomeViewModel(
                 }
                 is weTech.weRide.utils.Resource.Error -> {
                     _error.value = result.message
+                    // Load mock data on error
+                    _vehicles.value = getMockVehicles()
+                    applyFilters()
                     _isLoading.value = false
                 }
                 else -> {
@@ -80,6 +84,158 @@ class HomeViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Get mock/demo vehicles for testing when API is unavailable
+     */
+    private fun getMockVehicles(): List<VehicleResource> {
+        return listOf(
+            VehicleResource(
+                id = "1",
+                brand = "Xiaomi",
+                model = "Mi Electric Scooter Pro 2",
+                year = 2024,
+                battery = 85,
+                maxSpeed = 25,
+                range = 45,
+                weight = 14.2,
+                color = "Negro",
+                licensePlate = "ABC-123",
+                location = "-12.0464,-77.0429", // Lima, Peru
+                status = "available",
+                type = "scooter",
+                companyId = "1",
+                pricePerMinute = 0.35,
+                image = null,
+                features = listOf("Luces LED", "Frenos de disco", "Pantalla LCD"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 30),
+                totalKilometers = 450.5,
+                rating = 4.5
+            ),
+            VehicleResource(
+                id = "2",
+                brand = "Segway",
+                model = "Ninebot Max",
+                year = 2024,
+                battery = 92,
+                maxSpeed = 30,
+                range = 65,
+                weight = 15.5,
+                color = "Blanco",
+                licensePlate = "DEF-456",
+                location = "-12.0450,-77.0300",
+                status = "available",
+                type = "scooter",
+                companyId = "1",
+                pricePerMinute = 0.40,
+                image = null,
+                features = listOf("IPX7 Waterproof", "App connectivity", "Carga rápida"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 45),
+                totalKilometers = 320.0,
+                rating = 4.8
+            ),
+            VehicleResource(
+                id = "3",
+                brand = "Bosch",
+                model = "eBike Performance",
+                year = 2024,
+                battery = 78,
+                maxSpeed = 45,
+                range = 120,
+                weight = 22.0,
+                color = "Rojo",
+                licensePlate = "GHI-789",
+                location = "-12.0480,-77.0450",
+                status = "available",
+                type = "bike",
+                companyId = "1",
+                pricePerMinute = 0.50,
+                image = null,
+                features = listOf("Pedal assist", "Cambios Shimano", "Suspensión frontal"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 60),
+                totalKilometers = 890.0,
+                rating = 4.7
+            ),
+            VehicleResource(
+                brand = "Yadea",
+                model = "Keeness 2.0",
+                year = 2024,
+                battery = 65,
+                maxSpeed = 55,
+                range = 90,
+                weight = 95.0,
+                color = "Gris",
+                licensePlate = "JKL-012",
+                location = "-12.0440,-77.0350",
+                status = "available",
+                type = "motorcycle",
+                companyId = "1",
+                pricePerMinute = 0.75,
+                image = null,
+                features = listOf("Extraíble batería", "Alarma", "Asiento cómodo"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 30),
+                totalKilometers = 1250.0,
+                rating = 4.6,
+                id = "4"
+            ),
+            VehicleResource(
+                id = "5",
+                brand = "Askoll",
+                model = "NGS1",
+                year = 2024,
+                battery = 88,
+                maxSpeed = 50,
+                range = 100,
+                weight = 85.0,
+                color = "Azul",
+                licensePlate = "MNO-345",
+                location = "-12.0470,-77.0380",
+                status = "available",
+                type = "motorcycle",
+                companyId = "1",
+                pricePerMinute = 0.70,
+                image = null,
+                features = listOf("Carga rápida", "Bluetooth", "GPS integrado"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 25),
+                totalKilometers = 780.0,
+                rating = 4.4
+            ),
+            VehicleResource(
+                id = "6",
+                brand = "Gogoro",
+                model = "S2 Adventure",
+                year = 2024,
+                battery = 70,
+                maxSpeed = 52,
+                range = 110,
+                weight = 92.0,
+                color = "Verde",
+                licensePlate = "PQR-678",
+                location = "-12.0430,-77.0410",
+                status = "available",
+                type = "motorcycle",
+                companyId = "1",
+                pricePerMinute = 0.80,
+                image = null,
+                features = listOf("iQ System", "ModoAdventure", "Carga instantánea"),
+                maintenanceStatus = "good",
+                lastMaintenance = Date(),
+                nextMaintenance = Date(System.currentTimeMillis() + 86400000 * 35),
+                totalKilometers = 1100.0,
+                rating = 4.9
+            )
+        )
     }
 
     /**

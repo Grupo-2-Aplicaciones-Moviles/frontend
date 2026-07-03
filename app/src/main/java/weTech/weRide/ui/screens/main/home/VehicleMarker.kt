@@ -5,9 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.DirectionsBike
-import androidx.compose.material.icons.filled.TwoWheeler
+import androidx.compose.material.icons.filled.ElectricBike
+import androidx.compose.material.icons.filled.ElectricMoped
+import androidx.compose.material.icons.filled.Motorcycle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,10 +38,10 @@ fun VehicleMarkerIcon(
     modifier: Modifier = Modifier
 ) {
     val (icon, color) = when (vehicle.type.lowercase()) {
-        "scooter" -> Icons.Default.ElectricScooter to ScooterGreen
+        "scooter" -> Icons.Default.ElectricMoped to ScooterGreen
         "bike" -> Icons.Default.DirectionsBike to BikeBlue
-        "motorcycle" -> Icons.Default.TwoWheeler to MotorcycleOrange
-        else -> Icons.Default.ElectricScooter to EnergyGreen
+        "motorcycle" -> Icons.Default.Motorcycle to MotorcycleOrange
+        else -> Icons.Default.ElectricBike to EnergyGreen
     }
 
     val backgroundColor = if (isSelected) EnergyGreen else color

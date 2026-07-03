@@ -183,15 +183,15 @@ fun FilterSheetContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             WeRideOutlinedButton(
-                text = "Limpiar",
                 onClick = onClearFilters,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                text = "Limpiar"
             )
 
             WeRideButton(
-                text = "Aplicar",
                 onClick = onApply,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                text = "Aplicar"
             )
         }
     }
