@@ -2,9 +2,9 @@ package weTech.weRide.utils
 
 object Constants {
     // API Configuration
-    // Use emulator alias (10.0.2.2) or actual host IP (192.168.1.38)
-    // If 10.0.2.2 doesn't work, try your machine's local IP
-    const val BASE_URL = "http://192.168.1.38:8080/api/v1/"
+    // Production backend URL (Render)
+    const val BASE_URL = "https://backend-e5km.onrender.com/api/v1/"
+    // Local development: http://10.0.2.2:8080/api/v1/ (emulator) or http://192.168.1.38:8080/api/v1/ (device on same network)
     const val TIMEOUT_CONNECT = 30L
     const val TIMEOUT_READ = 30L
     const val TIMEOUT_WRITE = 30L

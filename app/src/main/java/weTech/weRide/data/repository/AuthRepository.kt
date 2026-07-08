@@ -43,12 +43,21 @@ class AuthRepository(
 
     /**
      * Sign up with username and password
+     * Note: Deployed backend returns AccountResource(id, username) from sign-up,
+     * so we need to call sign-in afterwards to get the token
      */
     suspend fun signUp(username: String, password: String): Resource<AuthResponse> {
         return try {
-            val response = authApiService.signUp(SignUpRequest(username, password))
-            if (response.isSuccessful && response.body() != null) {
-                val authResponse = response.body()!!
+            // First, sign up to create the account
+            val signUpResponse = authApiService.signUp(SignUpRequest(username, password))
+            if (!signUpResponse.isSuccessful || signUpResponse.body() == null) {
+                return Resource.Error(signUpResponse.message() ?: "Sign up failed")
+            }
+
+            // Account created successfully, now sign in to get the token
+            val signInResponse = authApiService.signIn(SignInRequest(username, password))
+            if (signInResponse.isSuccessful && signInResponse.body() != null) {
+                val authResponse = signInResponse.body()!!
                 // Save token
                 tokenManager.saveToken(authResponse.token)
                 tokenManager.saveUserInfo(
@@ -58,7 +67,7 @@ class AuthRepository(
                 )
                 Resource.Success(authResponse)
             } else {
-                Resource.Error(response.message() ?: "Sign up failed")
+                Resource.Error("Account created but sign in failed: ${signInResponse.message()}")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Unknown error occurred")

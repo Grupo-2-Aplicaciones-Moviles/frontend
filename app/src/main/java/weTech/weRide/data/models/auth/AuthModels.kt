@@ -27,11 +27,11 @@ data class AuthResponse(
 )
 
 /**
- * Account Resource
+ * Account Resource (matches deployed backend)
  */
 data class AccountResource(
     val id: Long,
-    val email: String
+    val username: String
 )
 
 /**
@@ -58,4 +58,15 @@ data class ProfileSetupRequest(
     val dateOfBirth: String,
     val gender: String,
     val profilePictureUrl: String? = null
+)
+
+/**
+ * Profile Resource (matches deployed backend)
+ */
+data class ProfileResource(
+    val id: Long,
+    val userId: Long,
+    val firstName: String,
+    val lastName: String,
+    val email: String
 )
